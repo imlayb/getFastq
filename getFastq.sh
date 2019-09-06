@@ -3,7 +3,7 @@
 
 function getSRA {
 	if [[ $# == 1 ]]; then
-		FASP_CMD="/home/${USER}/.aspera/cli/bin/ascp -T -k 1 -l  900m  -i /home/${USER}/.aspera/cli/etc/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/sra/sra-instant/reads/ByRun/sra/SRR/${1::6}/${1}/${1}.sra ${1}.sra"
+		FASP_CMD="/home/${USER}/.aspera/cli/bin/ascp -T -k 1 -l  ${BANDWIDTH}  -i /home/${USER}/.aspera/cli/etc/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/sra/sra-instant/reads/ByRun/sra/SRR/${1::6}/${1}/${1}.sra ${1}.sra"
 		echo $FASP_CMD
 	  eval $FASP_CMD
 		if [[ $? == 0 ]]; then
@@ -24,7 +24,8 @@ function getSRA {
 }
 THREADS=1
 TMPDIR=./
-while getopts ":d:t:" opt; do
+BANDWIDTH=900m
+while getopts ":d:t:b:" opt; do
   case $opt in
     t)
       re='^[0-9]+$'
@@ -40,6 +41,14 @@ while getopts ":d:t:" opt; do
         else
           TMPDIR=$OPTARG
         fi
+      ;;
+    b)
+      re2='^[0-9]+m$'
+      if ! [[ $OPTARG =~ $re2 ]]; then
+        echo "error: Not a valid bandwidth" >&2; exit 1
+      else
+        BANDWIDTH=$OPTARG
+      fi
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
