@@ -22,7 +22,7 @@ function getSRA {
 	  fi
 	fi
 }
-THREADS=1
+THREADS=4
 TMPDIR=./
 BANDWIDTH=900m
 while getopts ":d:t:b:" opt; do
