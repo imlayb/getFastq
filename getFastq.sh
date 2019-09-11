@@ -1,6 +1,3 @@
-# Requires parallel-fastq-dump on PATH, edirect, typical aspera connect installation, and curl.
-# All or nothing behavior.
-
 function getSRA {
 	if [[ $# == 1 ]]; then
 		FASP_CMD="/home/${USER}/.aspera/cli/bin/ascp -T -k 1 -l  ${BANDWIDTH}  -i /home/${USER}/.aspera/cli/etc/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/sra/sra-instant/reads/ByRun/sra/SRR/${1::6}/${1}/${1}.sra ${1}.sra"
@@ -10,7 +7,10 @@ function getSRA {
 		  return 0
 		elif [[ $? != 0 ]]; then
 		  echo "Failed to download using fasp. Resorting to https with curl."
-		  result=$(esearch -db sra -query ${SRR} | efetch -format xml | xtract -pattern RUN -element "@url,SRAFiles/SRAFile" | awk -v SRR="$SRR" -F'[ ]' '$1 ~ SRR {print $1}')
+		  result=$(esearch -db sra -query ${SRR} | \
+		    efetch -format xml | \
+		    xtract -pattern RUN -element "@url,SRAFiles/SRAFile" | \
+		    awk -v SRR=$SRR 'BEGIN{FS=OFS=" ";}{regex="^https.+("SRR"$|"SRR"\\.[[:digit:]])"}{for(i=1;i<=NF;i++){ if($i~regex){print $i;exit} } }')
 		  HTTPS_CMD="curl ${result} --output ./${1}.sra"
 		  echo $HTTPS_CMD
 		  eval $HTTPS_CMD
@@ -67,7 +67,8 @@ for SRR in $input
 do
 	SRR=${SRR%\"}
 	SRR=${SRR#\"}
-	if  [[ ${SRR::3} == "SRR" ]]; then
+	validPrefix='[SRR|ERR]'
+	if  [[ ${SRR::3} =~ $validPrefix ]]; then
 		echo "Attempting to get ${SRR}"
 		getSRA $SRR
 		if [[ $? != 0 ]]; then
@@ -79,7 +80,7 @@ do
 		fi
 		parallel-fastq-dump -s ${SRR}.sra -t $THREADS --readids --split-files --tmpdir $TMPDIR
     if [[ $? == 0 ]]; then
-      rm ${SRR}.sra
+      rm $SRR.sra
     fi
 	fi
 done
